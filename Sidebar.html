@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      .container {
+        padding: 10px;
+      }
+      #selectedText {
+        margin: 10px 0;
+        padding: 8px;
+        background: #f5f5f5;
+        border-radius: 4px;
+        word-wrap: break-word;
+      }
+      #message {
+        width: 100%;
+        min-height: 100px;
+        margin: 10px 0;
+        padding: 8px;
+        box-sizing: border-box;
+      }
+      .button {
+        background: #4285f4;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .button:hover {
+        background: #3367d6;
+      }
+      .loading {
+        display: none;
+        text-align: center;
+        margin: 10px 0;
+      }
+      .spinner {
+        border: 3px solid #f3f3f3;
+        border-radius: 50%;
+        border-top: 3px solid #4285f4;
+        width: 20px;
+        height: 20px;
+        animation: spin 1s linear infinite;
+        margin: 10px auto;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h3>Selected Text:</h3>
+      <div id="selectedText">No text selected</div>
+      
+      <h3>Your Message:</h3>
+      <textarea id="message" placeholder="Enter your message or prompt here..."></textarea>
+      
+      <button class="button" onclick="processSelection()">Process Selection</button>
+      
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <div id="status">Processing...</div>
+      </div>
+    </div>
+    
+    <script>
+      function updateSelectedText() {
+        google.script.run
+          .withSuccessHandler(function(text) {
+            document.getElementById('selectedText').innerHTML = 
+              text || 'No text selected';
+          })
+          .getSelectedText();
+      }
+      
+      function processSelection() {
+        const message = document.getElementById('message').value;
+        const selectedText = document.getElementById('selectedText').innerHTML;
+        
+        if (selectedText === 'No text selected') {
+          alert('Please select some text first');
+          return;
+        }
+        
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('status').textContent = 'Sending request to AI...';
+        
+        google.script.run
+          .withSuccessHandler(function(improvedText) {
+            document.getElementById('status').textContent = 'Got AI response, applying changes...';
+            
+            google.script.run
+              .withSuccessHandler(function() {
+                document.getElementById('status').textContent = 'Changes applied successfully!';
+                setTimeout(() => {
+                  document.getElementById('loading').style.display = 'none';
+                  document.getElementById('message').value = '';
+                }, 1000);
+              })
+              .withFailureHandler(function(error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('status').textContent = 'Error applying changes';
+                console.error('Error:', error);
+                alert('Error: ' + (error.message || error));
+              })
+              .suggestEdit(selectedText, improvedText);
+          })
+          .withFailureHandler(function(error) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('status').textContent = 'Error getting AI response';
+            console.error('Error:', error);
+            alert('Error processing text: ' + (error.message || error));
+          })
+          .processWithAI(selectedText, message);
+      }
+      
+      // Update selected text when sidebar loads
+      updateSelectedText();
+      
+      // Update selected text when user makes a new selection
+      document.addEventListener('mousemove', updateSelectedText);
+    </script>
+  </body>
+</html> 

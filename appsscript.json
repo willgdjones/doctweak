@@ -1,0 +1,32 @@
+{
+  "timeZone": "America/New_York",
+  "dependencies": {},
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/documents.currentonly",
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/script.container.ui"
+  ],
+  "urlFetchWhitelist": [
+    "https://api.openai.com/v1/chat/completions"
+  ]
+  "addOns": {
+    "common": {
+      "name": "AI Assistant",
+      "logoUrl": "https://www.google.com/images/icons/product/docs-32.png",
+      "useLocaleFromApp": true,
+      "homepageTrigger": {
+        "enabled": true,
+        "runFunction": "onOpen"
+      },
+
+    },
+    "docs": {
+      "homepageTrigger": {
+        "enabled": true,
+        "runFunction": "onOpen"
+      }
+    }
+  }
+} 
