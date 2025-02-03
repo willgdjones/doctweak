@@ -6,7 +6,7 @@ function onOpen(e) {
   try {
     // For regular editor UI
     DocumentApp.getUi()
-      .createMenu('AI Assistant')
+      .createMenu('DocTweak')
       .addItem('Show Sidebar', 'showSidebar')
       .addToUi();
   } catch (error) {
@@ -31,7 +31,7 @@ function createHomepageCard() {
 
 function showSidebar() {
   const html = HtmlService.createHtmlOutputFromFile('Sidebar')
-    .setTitle('AI Assistant');
+    .setTitle('DocTweak');
   DocumentApp.getUi().showSidebar(html);
 }
 
@@ -113,15 +113,26 @@ function suggestEdit(originalText, suggestedText) {
   
   try {
     const elements = selection.getRangeElements();
-    const element = elements[0];
-    const text = element.getElement().editAsText();
-    const endOffset = element.getEndOffsetInclusive();
     
-    // Insert a newline and the suggested text after the selection
-    text.insertText(endOffset + 1, '\n' + suggestedText);
-    
-    // Color the suggested text in blue
-    text.setForegroundColor(endOffset + 2, endOffset + suggestedText.length + 2, '#1155cc');
+    // Handle each element in the selection
+    for (let i = 0; i < elements.length; i++) {
+      const element = elements[i];
+      
+      if (element.getElement().editAsText) {
+        const text = element.getElement().editAsText();
+        
+        if (element.isPartial()) {
+          // If it's a partial element, replace just the selected portion
+          text.deleteText(element.getStartOffset(), element.getEndOffsetInclusive());
+          text.insertText(element.getStartOffset(), suggestedText);
+        } else {
+          // If it's a full element, replace the entire text
+          const fullText = text.getText();
+          text.deleteText(0, fullText.length - 1);
+          text.insertText(0, suggestedText);
+        }
+      }
+    }
     
     Logger.log('Changes applied successfully');
     
@@ -177,7 +188,31 @@ function getOpenAIResponse(prompt) {
   }
 }
 
-function processWithAI(selectedText, userMessage) {
+function processWithDocTweakCritique(selectedText, userMessage) {
+  const prompt = `As a writing assistant, please provide focused feedback on the following text based specifically on the user's question/message.
+
+SELECTED TEXT:
+"${selectedText}"
+
+USER'S MESSAGE/QUESTION:
+${userMessage}
+
+Please provide a direct and focused response that:
+1. Specifically addresses the user's question/concern
+2. Uses concrete examples from the text to illustrate your points
+3. Offers actionable suggestions related to the user's query
+
+Important: 
+- Focus ONLY on addressing what the user has asked about
+- Avoid generic feedback that isn't related to the user's specific question
+- Use examples from the text to support your suggestions
+- Keep the response concise and targeted to the user's needs`;
+  
+  const critiqueText = getOpenAIResponse(prompt);
+  return critiqueText;
+}
+
+function processWithDocTweakReplace(selectedText, userMessage) {
   const prompt = `Please improve the following text based on this instruction: ${userMessage}
 
 Text to improve: "${selectedText}"

@@ -5,13 +5,9 @@
     <style>
       .container {
         padding: 10px;
-      }
-      #selectedText {
-        margin: 10px 0;
-        padding: 8px;
-        background: #f5f5f5;
-        border-radius: 4px;
-        word-wrap: break-word;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
       }
       #message {
         width: 100%;
@@ -20,6 +16,11 @@
         padding: 8px;
         box-sizing: border-box;
       }
+      .button-group {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
       .button {
         background: #4285f4;
         color: white;
@@ -27,6 +28,11 @@
         padding: 8px 16px;
         border-radius: 4px;
         cursor: pointer;
+        font-size: 14px;
+        font-family: Arial, sans-serif;
+      }
+      .button-group .button {
+        flex: 1;
       }
       .button:hover {
         background: #3367d6;
@@ -49,73 +55,141 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
+      #response {
+        flex-grow: 1;
+        margin-top: 16px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        overflow-y: auto;
+        margin-bottom: 16px;
+      }
+      #selectedText, #targetText {
+        display: none;
+      }
+      #applyButton {
+        display: none;
+        width: 100%;
+        margin-bottom: 16px;
+      }
     </style>
   </head>
   <body>
     <div class="container">
-      <h3>Selected Text:</h3>
-      <div id="selectedText">No text selected</div>
+      <div id="selectedText"></div>
+      <div id="targetText"></div>
       
       <h3>Your Message:</h3>
       <textarea id="message" placeholder="Enter your message or prompt here..."></textarea>
       
-      <button class="button" onclick="processSelection()">Process Selection</button>
+      <div class="button-group">
+        <button class="button" onclick="processCritique()">Critique</button>
+        <button class="button" onclick="processReplace()">Replace</button>
+      </div>
       
       <div id="loading" class="loading">
         <div class="spinner"></div>
         <div id="status">Processing...</div>
       </div>
+
+      <div id="response"></div>
+      <button id="applyButton" class="button" onclick="applyChanges()">Apply Changes</button>
     </div>
     
     <script>
       function updateSelectedText() {
         google.script.run
           .withSuccessHandler(function(text) {
-            document.getElementById('selectedText').innerHTML = 
-              text || 'No text selected';
+            if (text) {
+              document.getElementById('selectedText').innerHTML = text;
+              document.getElementById('targetText').innerHTML = text;
+            }
           })
           .getSelectedText();
       }
       
-      function processSelection() {
+      function applyChanges() {
+        const targetText = document.getElementById('targetText').innerHTML;
+        const responseText = document.getElementById('response').innerHTML;
+        
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('status').textContent = 'Applying changes...';
+        
+        google.script.run
+          .withSuccessHandler(function() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('status').textContent = 'Changes applied successfully!';
+            document.getElementById('applyButton').style.display = 'none';
+            document.getElementById('response').innerHTML = '';
+          })
+          .withFailureHandler(function(error) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('status').textContent = 'Error applying changes';
+            console.error('Error:', error);
+            alert('Error: ' + (error.message || error));
+          })
+          .suggestEdit(targetText, responseText);
+      }
+      
+      function processCritique() {
         const message = document.getElementById('message').value;
         const selectedText = document.getElementById('selectedText').innerHTML;
         
-        if (selectedText === 'No text selected') {
+        if (!selectedText) {
           alert('Please select some text first');
           return;
         }
         
         document.getElementById('loading').style.display = 'block';
-        document.getElementById('status').textContent = 'Sending request to AI...';
+        document.getElementById('status').textContent = 'Sending request to DocTweak...';
+        document.getElementById('applyButton').style.display = 'none';
+        document.getElementById('response').innerHTML = '';
         
         google.script.run
-          .withSuccessHandler(function(improvedText) {
-            document.getElementById('status').textContent = 'Got AI response, applying changes...';
-            
-            google.script.run
-              .withSuccessHandler(function() {
-                document.getElementById('status').textContent = 'Changes applied successfully!';
-                setTimeout(() => {
-                  document.getElementById('loading').style.display = 'none';
-                  document.getElementById('message').value = '';
-                }, 1000);
-              })
-              .withFailureHandler(function(error) {
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('status').textContent = 'Error applying changes';
-                console.error('Error:', error);
-                alert('Error: ' + (error.message || error));
-              })
-              .suggestEdit(selectedText, improvedText);
+          .withSuccessHandler(function(critiqueText) {
+            document.getElementById('status').textContent = 'Got DocTweak response...';
+            document.getElementById('response').innerHTML = critiqueText;
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('message').value = '';
           })
           .withFailureHandler(function(error) {
             document.getElementById('loading').style.display = 'none';
-            document.getElementById('status').textContent = 'Error getting AI response';
+            document.getElementById('status').textContent = 'Error getting DocTweak response';
             console.error('Error:', error);
             alert('Error processing text: ' + (error.message || error));
           })
-          .processWithAI(selectedText, message);
+          .processWithDocTweakCritique(selectedText, message);
+      }
+      
+      function processReplace() {
+        const message = document.getElementById('message').value;
+        const selectedText = document.getElementById('selectedText').innerHTML;
+        
+        if (!selectedText) {
+          alert('Please select some text first');
+          return;
+        }
+        
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('status').textContent = 'Sending request to DocTweak...';
+        document.getElementById('applyButton').style.display = 'none';
+        document.getElementById('response').innerHTML = '';
+        
+        google.script.run
+          .withSuccessHandler(function(improvedText) {
+            document.getElementById('status').textContent = 'Got DocTweak response...';
+            document.getElementById('response').innerHTML = improvedText;
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('message').value = '';
+            document.getElementById('applyButton').style.display = 'block';
+          })
+          .withFailureHandler(function(error) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('status').textContent = 'Error getting DocTweak response';
+            console.error('Error:', error);
+            alert('Error processing text: ' + (error.message || error));
+          })
+          .processWithDocTweakReplace(selectedText, message);
       }
       
       // Update selected text when sidebar loads
